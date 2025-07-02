@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Animal Admin Panel</title>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- Axios CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    // ---------- LoginForm Component (Unchanged) ----------
+    function LoginForm({ onLogin }) {
+      // ... (Keep the same login form implementation as provided)
+    }
+    
+    // ---------- AnimalAdminPanel Component ----------
+    function AnimalAdminPanel() {
+      const [animals, setAnimals] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState("");
+      const [searchTerm, setSearchTerm] = useState("");
+      
+      // States for Create operation
+      const [newAnimalName, setNewAnimalName] = useState("");
+      const [newAnimalSpecies, setNewAnimalSpecies] = useState("");
+      
+      // States for Update operation
+      const [editingAnimal, setEditingAnimal] = useState(null);
+      const [editName, setEditName] = useState("");
+      const [editSpecies, setEditSpecies] = useState("");
+
+      const [currentUserName, setCurrentUserName] = useState("");
+      const token = localStorage.getItem("access_token");
+
+      // Fetch Animals from backend
+      const fetchData = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/api/animals", {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+          setAnimals(response.data);
+          setError("");
+        } catch (err) {
+          console.error("Error fetching data:", err);
+          setError("Failed to load animals. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const fetchCurrentUserData = async () => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/users/me", {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+          setCurrentUserName(response.data.email);
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+        }
+      };
+
+      useEffect(() => {
+        fetchData();
+        fetchCurrentUserData();
+      }, []);
+      
+      // Search filtering
+      const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+      };
+
+
+      
+      // Create a new animal
+      const addAnimal = async () => {
+        if (!newAnimalName || !newAnimalSpecies) {
+          alert("Enter both name and species for new animal");
+          return;
+        }
+        try {
+          const response = await axios.post(
+            "http://127.0.0.1:8000/api/animals",
+            { name: newAnimalName, species: newAnimalSpecies }, // ✅ Correct JSON format
+            {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+              },
+            }
+          );
+          setAnimals([...animals, response.data]); // ✅ Fix response format
+          setNewAnimalName("");
+          setNewAnimalSpecies("");
+        } catch (err) {
+          console.error(err);
+          alert("Error adding animal");
+        }
+      };
+
+      
+      // Open edit modal
+      const openEditModal = (animal) => {
+        setEditingAnimal(animal);
+        setEditName(animal.name);
+        setEditSpecies(animal.species);
+      };
+      
+      // Update animal
+      const updateAnimal = async () => {
+        if (!editingAnimal) return;
+        try {
+          const response = await axios.put(
+            `http://127.0.0.1:8000/api/animals/${editingAnimal.id}`,
+            { name: editName, species: editSpecies },
+            {
+              headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+            }
+          );
+          setAnimals(animals.map((a) => (a.id === editingAnimal.id ? response.data : a)));
+          setEditingAnimal(null);
+        } catch (err) {
+          console.error(err);
+          alert("Error updating animal");
+        }
+      };
+      
+      // Delete animal
+      const deleteAnimal = async (animalId) => {
+        if (!window.confirm("Are you sure you want to delete this animal?")) return;
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/animals/${animalId}`, {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+          setAnimals(animals.filter((a) => a.id !== animalId));
+        } catch (err) {
+          console.error(err);
+          alert("Error deleting animal");
+        }
+      };
+      
+      // Logout
+      const handleLogout = () => {
+        localStorage.removeItem("access_token");
+        window.location.reload();
+      };
+      
+      // Filtered animals based on searchTerm
+      const filteredAnimals = animals.filter(animal =>
+        animal.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        animal.species.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50">
+          <nav className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 shadow-lg">
+            <div className="container mx-auto flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <i className="fas fa-paw text-white text-2xl"></i>
+                <h1 className="text-white text-xl font-bold">Animal Dashboard</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <button onClick={handleLogout} className="text-white">Logout</button>
+              </div>
+            </div>
+          </nav>
+          
+          <div className="flex">
+            <div className="w-64 bg-white shadow-lg h-screen fixed left-0 hidden md:block">
+              <div className="p-4">
+                <div className="mb-8">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg p-4 mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-white rounded-full h-10 w-10 flex items-center justify-center">
+                        <i className="fas fa-user text-blue-600"></i>
+                      </div>
+                      <div>
+                        <p className="font-medium">Admin User</p>
+                        <p className="text-xs">{currentUserName}</p>
+                      </div>
+
+                   
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg p-4 mb-4">
+                    <a href="#" className="flex items-center space-x-3 p-3 rounded-lg text-white transition-colors">
+                      <i className="fas fa-users"></i>
+
+                      <a href="/adminui"> Users</a>
+                    </a>
+                  </div>
+
+
+
+              </div>
+            </div>
+            
+            <div className="md:ml-64 w-full">
+              <div className="container mx-auto p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Animal Management</h2>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-grow">
+                      <input 
+                        type="text" 
+                        placeholder="Search animals..." 
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={searchTerm}
+                        onChange={handleSearch}
+                      />
+                      <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <button 
+                      onClick={fetchData}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+                    >
+                      <i className="fas fa-sync-alt mr-2"></i>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold mb-2">Add New Animal</h3>
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <input 
+                      type="text" 
+                      placeholder="Animal Name" 
+                      value={newAnimalName} 
+                      onChange={(e) => setNewAnimalName(e.target.value)} 
+                      className="border p-2 rounded w-full md:w-1/3"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Species" 
+                      value={newAnimalSpecies} 
+                      onChange={(e) => setNewAnimalSpecies(e.target.value)} 
+                      className="border p-2 rounded w-full md:w-1/3"
+                    />
+                    <button onClick={addAnimal} className="bg-green-500 text-white px-4 py-2 rounded">
+                      Add Animal
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-lg shadow-inner border overflow-hidden">
+                  {loading ? (
+                    <div className="flex justify-center items-center p-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-r-transparent"></div>
+                    </div>
+                  ) : error ? (
+                    <div className="p-8 text-center">
+                      <p className="text-red-600 font-medium">{error}</p>
+                      <button 
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        onClick={fetchData}
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  ) : (
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Species</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredAnimals.map((animal) => (
+                          <tr key={animal.id} className="hover:bg-blue-50">
+                            <td className="px-6 py-4">{animal.id}</td>
+                            <td className="px-6 py-4">{animal.name}</td>
+                            <td className="px-6 py-4">{animal.species}</td>
+                            <td className="px-6 py-4 flex gap-2">
+                              <button 
+                                className="text-blue-600 hover:text-blue-900" 
+                                onClick={() => openEditModal(animal)}
+                              >
+                                <i className="fas fa-edit mr-1"></i>Edit
+                              </button>
+                              <button 
+                                className="text-red-600 hover:text-red-900" 
+                                onClick={() => deleteAnimal(animal.id)}
+                              >
+                                <i className="fas fa-trash-alt mr-1"></i>Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {editingAnimal && (
+            <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+              <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+                <h2 className="text-xl font-bold mb-4">Edit Animal</h2>
+                <div className="mb-3">
+                  <label className="block text-gray-700">Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full border rounded p-2"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="block text-gray-700">Species</label>
+                  <input
+                    type="text"
+                    value={editSpecies}
+                    onChange={(e) => setEditSpecies(e.target.value)}
+                    className="w-full border rounded p-2"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={updateAnimal}
+                    className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditingAnimal(null)}
+                    className="bg-gray-500 text-white px-4 py-2 rounded"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    function App() {
+      const [accessToken, setAccessToken] = useState(localStorage.getItem("access_token") || "");
+      
+      const handleLogin = async (token) => {
+        try {
+          const response = await axios.get("http://127.0.0.1:8000/users/me", {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+          if (!response.data.is_superuser) {
+            alert("You are not authorized");
+            localStorage.removeItem("access_token");
+            setAccessToken("");
+            return;
+          }
+          localStorage.setItem("access_token", token);
+          setAccessToken(token);
+        } catch (error) {
+          alert("Login failed: Unable to verify admin status");
+        }
+      };
+      
+      return accessToken ? <AnimalAdminPanel /> : <LoginForm onLogin={handleLogin} />;
+    }
+    
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+problem
+
+
+1.not login with user name only email and pass work
+
+2.add user nahi kar paa rha hu 
+
+3.edit bhi nahi kar pa rha hu 
+
+4. only delete work 
+
+
+
+uvicorn auth.app:app --reload

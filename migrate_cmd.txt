@@ -1,0 +1,34 @@
+alembic revision --autogenerate -m "Initial migration"   # changes ko save karta hai like migration in files
+
+
+alembic upgrade head  # work like migrate real db ko change karta hai as migration
+
+alembic downgrade -1  # ye ek migrations version down le jata hai
+
+
+alembic stamp head – Alembic ko force karta hai ki current database version ko latest version samjhe bina changes kiye.
+
+
+
+uvicorn main:app --reload   # to run
+
+
+
+
+
+
+google url =
+
+https://accounts.google.com/o/oauth2/v2/auth?
+client_id=619376530474-httooklsail7hr0gf1r2iudicgd2bc29.apps.googleusercontent.com&
+redirect_uri=http://127.0.0.1:8000/auth/google/custom-callback&
+response_type=code&
+scope=openid%20email%20profile&
+state=your_random_state_here
+
+
+
+
+
+
+

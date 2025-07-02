@@ -1,0 +1,219 @@
+env.py=import sys
+import os
+import asyncio
+from logging.config import fileConfig
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+
+
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import pool
+from alembic import context
+
+import app2.models
+
+from db import Base, DATABASE_URL
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+target_metadata = Base.metadata
+
+def run_migrations_offline():
+    """Run migrations in 'offline' mode."""
+    context.configure(
+        url=DATABASE_URL,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+async def run_async_migrations():
+    """Run migrations in 'online' mode."""
+    connectable = create_async_engine(DATABASE_URL, poolclass=pool.NullPool)
+
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+
+    await connectable.dispose()
+
+def do_run_migrations(connection):
+    context.configure(
+        connection=connection, 
+        target_metadata=target_metadata,
+        # Include imports for migration files
+        template_args={
+            'imports': [
+                'import uuid',
+                'import fastapi_users_db_sqlalchemy',  # Add this line
+
+            ],
+        }
+    )
+    with context.begin_transaction():
+        context.run_migrations()
+
+def run_migrations_online():
+    """Run migrations in 'online' mode."""
+    asyncio.run(run_async_migrations())
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online(),,,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    db.py=import os
+from typing import AsyncGenerator, Optional
+from fastapi import Depends
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable, SQLAlchemyBaseOAuthAccountTable
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import DeclarativeMeta, declarative_base, Mapped, relationship, mapped_column
+from sqlalchemy.orm import sessionmaker
+import uuid
+from sqlalchemy import Column, String, ForeignKey
+
+# Parent directory set karna
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATABASE_PATH = os.path.join(BASE_DIR, 'test_v2.db')
+DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
+
+Base: DeclarativeMeta = declarative_base()
+
+class OAuthAccount(SQLAlchemyBaseOAuthAccountTable[uuid.UUID], Base):
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    oauth_name: Mapped[str] = mapped_column(String(length=100))
+    access_token: Mapped[str] = mapped_column(String(length=1024))
+    expires_at: Mapped[Optional[int]] = mapped_column(default=None)
+    refresh_token: Mapped[Optional[str]] = mapped_column(String(length=1024), default=None)
+    account_id: Mapped[str] = mapped_column(String(length=320))
+    account_email: Mapped[str] = mapped_column(String(length=320))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+
+class User(SQLAlchemyBaseUserTable[uuid.UUID], Base):
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(length=320), unique=True, index=True, nullable=False)
+    xxx: Mapped[str] = mapped_column(String(length=320), unique=True, index=True, nullable=False)
+
+    hashed_password: Mapped[str] = mapped_column(String(length=1024), nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_superuser: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship("OAuthAccount", lazy="joined")
+
+engine = create_async_engine(DATABASE_URL)
+async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+async def create_db_and_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
+
+async def get_user_db(session: AsyncSession = Depends(get_async_session)):
+    yield SQLAlchemyUserDatabase(session, User, OAuthAccount)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+alembic.ini 
+
+
+
+
+
+
+
+[alembic]
+
+script_location = alembic
+
+prepend_sys_path = .
+
+version_path_separator = os
+
+# sqlalchemy.url = sqlite+aiosqlite:///./test.db
+sqlalchemy.url = sqlite+aiosqlite:///D:/TForTrader/BackendLocal_Running/test_v2.db
+
+
+[post_write_hooks]
+
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARNING
+handlers = console
+qualname =
+
+[logger_sqlalchemy]
+level = WARNING
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S

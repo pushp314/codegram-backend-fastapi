@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React with Axios Example</title>
+
+    <style>
+        .modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+    z-index: 1000;
+
+
+    
+}
+.details-section
+{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+    z-index: 1000;
+
+
+    
+}
+
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+
+    <script type="text/babel"> // Important: type="text/babel"
+        const { useState, useEffect } = React;
+
+    
+
+
+        const AdminPage=({id,email,is_superuser,access_token,super_coin})=>{
+            const [allAnimals,setallAnimals] = useState([])
+         
+            const [animal_id,setAnimal_id] = useState("")
+            const [animal_name,setAnimal_name] = useState("")
+            const [animal_species,setAnimal_species] = useState("")
+            const [animal_price,setAnimal_price] = useState("price")
+
+            const [selectedAnimal, setSelectedAnimal] = useState(null);
+
+
+            const [editAnimal, setEditAnimal] = useState(null); // Store selected animal for editing
+            const [isModalOpen, setIsModalOpen] = useState(false); // Control modal visibility
+            const [isUpdating, setIsUpdating] = useState(false); // Loading state for update
+
+            const [editForm, setEditForm] = useState({
+                name: "",
+                species: "",
+                price:""
+            });
+
+            useEffect(()=>{
+                fetchallAnimals()
+            },[])
+
+            const UpdateAnimal = async () => {
+                if (!editAnimal || isUpdating) return;
+
+                setIsUpdating(true);
+                try {
+                    console.log("Sending payload:", editForm); // Log the payload
+                    const response = await axios.put(
+                        `http://127.0.0.1:8000/api/animals/${editAnimal.id}`,
+                        editForm,
+                        { headers: { Authorization: `Bearer ${access_token}` } }
+                    );
+                    console.log("Update response:", response.data);
+                    fetchallAnimals();
+                    closeModal();
+                } catch (error) {
+                    console.error("Update failed:", error.response?.data || error.message); // Log detailed error
+                } finally {
+                    setIsUpdating(false);
+                }
+            };
+
+            const AddAnimals = async()=>{
+
+                try {
+                    const respo = await axios.post("http://127.0.0.1:8000/api/animals",{name:animal_name,species:animal_species,price:animal_price},{headers: { "Authorization": `Bearer ${access_token}` }})
+                    console.log("respo==",respo)
+                    console.log("reso data ==",respo.data)
+                    fetchallAnimals();
+                    setAnimal_name("");
+                    setAnimal_species("");
+                    
+                } catch (error) {
+                    console.log("addanimal api called fail.....") 
+                }
+            }
+
+        
+            const fetchallAnimals = async ()=>{
+                try {
+                    console.log("fetchallAnimals start")
+                const respo = await axios.get("http://127.0.0.1:8000/api/animals",{headers: { "Authorization": `Bearer ${access_token}` }})
+                console.log(respo.data)
+                setallAnimals(respo.data)
+                console.log("fetchallAnimals end")
+                    
+                } catch (error) {
+                    console.log("fetchallAnimals error")
+                }
+            }
+
+
+            const DeleteAnimal = async (id)=>{
+                try {
+                 console.log("DeleteAnimal start")
+                const respo = await axios.delete(`http://127.0.0.1:8000/api/animals/${id}`,{headers: { "Authorization": `Bearer ${access_token}` }})
+                console.log(respo.data)
+                console.log("DeleteAnimal end")
+                fetchallAnimals()
+                } catch (error) {
+                    
+                }
+            }
+
+            const openModal = (animal) => {
+                setEditAnimal(animal);
+                setEditForm({
+                    name: animal.name || "",
+                    species: animal.species || "",
+                    price: animal.price || ""
+                });
+                setIsModalOpen(true);
+            };
+
+            const closeModal = () => {
+                setEditAnimal(null);
+                setEditForm({
+                    name: "",
+                    species: "",
+                    price:""
+                });
+                setIsModalOpen(false);
+            };
+
+            const viewAnimalDetails = async (animalId) => {
+                try {
+                    console.log("viewAnimalDetails called..")
+                    const response = await axios.get(
+                        `http://127.0.0.1:8000/api/animals/${animalId}`,
+                        { headers: { Authorization: `Bearer ${access_token}` } }
+                    );
+                    setSelectedAnimal(response.data); // Store the selected animal
+                    console.log("api called sucessdully ")
+                } catch (error) {
+                    console.error("Failed to fetch animal details:", error);
+                }
+            };
+
+            return (
+                <>
+                <h1>  hello you are superadmin</h1>
+                <button onClick={Logout}>Logout</button>
+                <h2> id = {id}</h2>
+                <h2> email = {email}</h2>
+                <h2> superCoins = {super_coin}</h2>
+                <h2> is_superuser = {is_superuser ? "True":"False"}</h2>
+                <h2>access_token === {access_token}</h2>
+
+
+                <div>
+                    <input type="text" value={animal_name} onChange={(e)=>setAnimal_name(e.target.value)}  placeholder="Enter animal name" />
+                    <input type="text" value={animal_species} onChange={(e)=>setAnimal_species(e.target.value)} placeholder="Enter animal Species"  />
+                    <input type="text" value={animal_price} onChange={(e)=>setAnimal_price(e.target.value)} placeholder="Enter price"  />
+
+                    <button onClick={()=>AddAnimals()}> AddAnimals </button>
+                </div>
+
+               <div>
+                        {
+                            allAnimals.map((animal) => (
+                                <p key={animal.id}>{animal.name} {animal.species} {animal.price}<button onClick={() => DeleteAnimal(animal.id)}> delete </button>
+
+                                    <button onClick={() => openModal(animal)}>Edit</button>
+                                    <button onClick={() => viewAnimalDetails(animal.id)}>View Details</button>
+                                </p>
+                            ))
+                        }
+                    </div>
+
+
+            {selectedAnimal && (
+                        <div className="details-section">
+                            <h2>Animal Details</h2>
+                            <p>ID: {selectedAnimal.id}</p>
+                            <p>Name: {selectedAnimal.name}</p>
+                            <p>Species: {selectedAnimal.species}</p>
+                            <p>Price: {selectedAnimal.price}</p>
+                            <button onClick={() => setSelectedAnimal(null)}>Close</button>
+                        </div>
+                    )}
+
+            {isModalOpen && (
+                <div className="modal">
+                    <div className="modal-content">
+                        <h2>Edit Animal</h2>
+                        <input
+                            type="text"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            placeholder="Name"
+                        />
+                        <input
+                            type="text"
+                            value={editForm.species}
+                            onChange={(e) => setEditForm({ ...editForm, species: e.target.value })}
+                            placeholder="Species"
+                        />
+
+                        <input
+                            type="text"
+                            value={editForm.price}
+                            onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                            placeholder="Price"
+                        />
+
+                        <button onClick={UpdateAnimal} disabled={isUpdating}>
+                            {isUpdating ? "Saving..." : "Save"}
+                        </button>
+                        <button onClick={closeModal}>Cancel</button>
+                    </div>
+                </div>
+
+            )}
+                </>
+            )
+        }
+
+
+
+
+
+
+
+        const UserPage = ({id,email,access_token,super_coin}) => {
+
+            const [allNormalAnimals,setallNormalAnimals] = useState([])
+
+            const [isOpen, setIsOpen] = useState(false);
+            const [checkbuy,setCheckbuy] = useState([])
+
+            const [selectedAnimalId, setSelectedAnimalId] = useState(null);
+
+
+            const openModel= async (animal_id)=>{ 
+                await CheckPurchasedAnimalPOST(animal_id), 
+                setSelectedAnimalId(animal_id),
+                setIsOpen(true) 
+             }
+
+            const closeModel=()=>{ setIsOpen(false)  }
+
+
+            useEffect(()=>{
+                fetchallNormalAnimals()
+            },[])
+
+
+
+            const fetchallNormalAnimals = async ()=>{
+                try {
+                console.log("fetchallAnimals start")
+                const respo = await axios.get("http://127.0.0.1:8000/api/normal/animals",{headers: { "Authorization": `Bearer ${access_token}` }})
+                console.log(respo.data)
+                setallNormalAnimals(respo.data)
+                console.log("fetchallAnimals end")
+                    
+                } catch (error) {
+                    console.log("fetchallAnimals error")
+                }
+            }
+
+
+            // const OpenDetallAnimal = async (animal_id)=>{
+            //     try {
+            //     console.log("OpenDetallAnimal start")
+            //     const respo = await axios.get(`http://127.0.0.1:8000/api/normal/animals/${animal_id}`,{headers: { "Authorization": `Bearer ${access_token}` }})
+            //     console.log(respo.data)
+            //     console.log("OpenDetallAnimal end")
+                    
+            //     } catch (error) {
+            //         console.log("OpenDetallAnimal error",error)
+            //     }
+            // }
+
+
+            const CheckPurchasedAnimalGet = async ()=>{
+                try {
+                console.log("CheckPurchasedAnimalGet start")
+                const respo = await axios.get(`http://127.0.0.1:8000/api/normal/animals/purchased_check`,{headers: { "Authorization": `Bearer ${access_token}` }})
+                console.log(respo.data)
+                console.log("CheckPurchasedAnimal end")
+                    
+                } catch (error) {
+                    console.log("CheckPurchasedAnimalGET error",error)
+                }
+            }
+
+
+            const CheckPurchasedAnimalPOST = async (animal_id)=>{
+                try {
+                console.log("CheckPurchasedAnimalPOST start")
+                const respo = await axios.post(`http://127.0.0.1:8000/api/normal/animals/purchased_check`,{animal_id,confirm:"false"},{headers: { "Authorization": `Bearer ${access_token}` }})
+                console.log(respo.data)
+                setCheckbuy(respo.data)
+                console.log("CheckPurchasedAnimal end")
+                    
+                } catch (error) {
+                    console.log("CheckPurchasedAnimalPOST error",error)
+                }
+            }
+
+
+
+            const [purchasedView,setPurchasedView] = useState()
+
+            const DetailAnimalPurchasedView =async(animal_id)=>{
+
+                try {
+                    console.log("DetailAnimalPurchasedView start")
+                    const respo = await axios.get(`http://127.0.0.1:8000/api/normal/animals/${animal_id}`,{headers: { "Authorization": `Bearer ${access_token}` }})
+                    console.log("DetailAnimalPurchasedView api called success")
+                    console.log("respo data ==",respo.data)
+                    setPurchasedView(respo.data)
+                    
+                } catch (error) {
+                    console.log("DetailAnimalPurchasedView api called failed..")
+                    
+                }
+            }
+
+
+
+
+            const ConfirmPurchased = async () => {
+                try {
+                    console.log("ConfirmPurchased start");
+                    console.log("Sending data:", { animal_id: Number(selectedAnimalId), confirm: "true" });
+
+                    const respo = await axios.post(
+                        `http://127.0.0.1:8000/api/normal/animals/purchased_check`,
+                        { animal_id: Number(selectedAnimalId), confirm: "true" },
+                        { headers: { "Authorization": `Bearer ${access_token}` } }
+                    );
+
+                    console.log(respo.data);
+                    console.log("ConfirmPurchased end");
+
+                    if (respo.data.success) {
+                        console.log("Purchase successful. Redirecting...");
+                        closeModel()  
+                        DetailAnimalPurchasedView(respo.data.animal_id)
+                        
+                    } else {
+                        alert("Purchase failed: " + respo.data.detail);
+                    }
+                } catch (error) {
+                    console.log("ConfirmPurchased error", error);
+
+                    // Add this to see the detailed validation error
+                    if (error.response) {
+                        console.log("Error response data:", error.response.data);
+                        console.log("Error status:", error.response.status);
+                    }
+                }
+            }
+
+
+
+
+
+                return (
+
+                    <div >
+                        
+                        <div>
+                            <h1>  hello you are just User</h1>
+                            <h2> id = {id}</h2>
+                            <h2> email = {email}</h2>
+                            
+                        </div>
+
+                       <div>
+
+                        {
+                            allNormalAnimals.map((animal)=>(
+                                <p key={animal.id}> {animal.id}  {animal.name}  {animal.price} 
+
+                                 <button onClick={()=>CheckPurchasedAnimalGet()}>GET Detail</button>
+                                 <button onClick={()=>CheckPurchasedAnimalPOST(animal.id)}>POST Detail</button>
+                                 <button onClick={()=>openModel(animal.id)}>Model View</button>
+
+                                </p>
+
+                            ))
+                        }
+                        
+                        
+                        </div>
+
+
+                        <div>
+
+                            {isOpen && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                                <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                                    <h2 className="text-xl font-bold">Animal Purchase Details</h2>
+
+                                    <h3> user supercoins = {checkbuy.user_supercoins} </h3>
+                                    <h3> animal price = {checkbuy.animal_price} </h3>
+                                    <h3> remain = {checkbuy.remain} </h3>
+                                    <p className="mt-2">Here you can see details of your purchase.</p>
+                                    <button onClick={closeModel} className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
+                                        Close Modal
+                                    </button>
+
+                                    <button onClick={()=>ConfirmPurchased()} className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
+                                        Pay Confirm
+                                    </button>
+
+                                    
+                                </div>
+                            </div>
+                        )}
+                            
+                            
+                        </div>
+
+
+
+                        <div>
+
+                            {purchasedView && (
+                                <div>
+                                    <h1> Hello! After successful purchase, here are the details</h1>
+                                    <h2> ID: {purchasedView.id}</h2>
+                                    <h2> Name: {purchasedView.name}</h2>
+                                    <h2> Price: {purchasedView.price}</h2>
+                                    <h2> Species: {purchasedView.species}</h2>
+                                </div>
+                            )}
+
+                            
+                            
+                        </div>
+
+          
+                    </div>
+                    
+                )
+            }
+
+
+
+        const Logout = ()=>{
+
+            localStorage.removeItem("access_token");
+            window.location.reload();
+        }
+
+
+        const Login=({parent_data})=>{
+
+            const formData = new URLSearchParams();
+
+
+            const [inputdata,setInputdata] = useState("")
+            const [username, setUsername] = useState("");
+            const [password, setPassword] = useState("");
+
+
+            useEffect(()=>{
+                console.log("Login useffect called..")
+                console.log(("inputdata ==",inputdata))
+            },[username])
+
+
+            const handleLogin=()=>{
+                console.log("handleLogin called...")
+
+                const formBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+                const loginapi = async ()=>{
+                  try {
+                    const response = await axios.post("http://127.0.0.1:8000/auth/jwt/login", 
+                                                                  formBody, 
+                                                                     { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                                                                     )
+
+                      console.log("login api callled sucessfully...")
+                      console.log("response ==", response)
+                      console.log("respo data ==", response.data)
+                      console.log("access_token created...")
+                      parent_data(response.data.access_token)
+                      localStorage.setItem("access_token", response.data.access_token);
+                    
+                  } catch (error) {
+
+                    console.log("errror occurs on loginapi called ===",error)
+                    
+                  }
+                }
+               
+                loginapi()
+               
+
+            }
+
+            // const handleLogin=()=>{
+            //     console.log("handleLogin called...")
+            //     const access_token = username + password +"hash256"
+            //     console.log("access_token created...")
+            //     parent_data(access_token)
+
+            // }
+
+            return (
+                <>
+                <h1>  login page </h1>
+
+                <h2>
+
+                    <input type="text"  value={username} onChange={(e)=>setUsername(e.target.value)} />
+                    <input type="text"  value={password} onChange={(e)=>setPassword(e.target.value)} />
+
+
+                    <button onClick={handleLogin}> Login </button>
+
+                    
+                </h2>
+
+                </>
+            )
+        }
+
+        function App() {
+            const [data, setData] = useState(null);
+            const [showLogin, setShowLogin] = useState(false);
+
+            const [id, setId] = useState("");
+            const [email, setEmail] = useState("");
+            const [isactive, setIsactive] = useState("");
+            const [isverified, setisverified] = useState("");
+            const [is_superuser, setIs_superuser] = useState("");
+            const [userData, setUserData] = useState(null);
+
+            const [accessToken, setAccessToken] = useState(localStorage.getItem("access_token") || "");
+
+           
+
+
+            useEffect(() => {
+                if (accessToken) {
+                    checkuserstate(accessToken);
+                }
+             }, [accessToken]);
+
+
+            const checkuserstate = async (token) => {
+                try {
+                    const respo = await axios.get("http://127.0.0.1:8000/users/me", {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+
+                    console.log("User Data:", respo.data);
+                    setUserData(respo.data);
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                    setUserData(null);
+                    localStorage.removeItem("access_token");
+                    setAccessToken("");
+                }
+            };
+
+
+            const parent_fun =(access_token_child)=>{
+
+                localStorage.setItem("access_token", access_token_child);
+                setAccessToken(access_token_child);
+                checkuserstate(access_token_child);
+
+            }
+
+            
+
+            return (
+                
+            <div>
+
+                {
+                    
+                    accessToken   ? userData ? (
+                            userData.is_superuser ? (
+                                <AdminPage id={userData.id} email={userData.email} is_superuser={userData.is_superuser} super_coin={userData.super_coins} access_token={accessToken} />
+                            ) : (
+                                <UserPage id={userData.id} email={userData.email} access_token={accessToken} super_coin={userData.super_coins} />
+                            )
+                        ) : (
+                            <h2>Loading user data...</h2>
+                        )  : <Login parent_data={parent_fun} />
+        
+        }
+                
+                </div>
+                
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />); // corrected rendering
+    </script>
+</body>
+</html>
