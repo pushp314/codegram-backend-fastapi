@@ -95,9 +95,4 @@ current_verified_user = fastapi_users.current_user(active=True, verified=True)
 current_superuser = fastapi_users.current_user(active=True,verified=True, superuser=True)
 
 
-@router.post("/resend-verification/")
-async def resend_verification(email: str, user_manager: UserManager = Depends(get_user_manager)):
-    return await user_manager.resend_verification_link(email)
-
-
 
