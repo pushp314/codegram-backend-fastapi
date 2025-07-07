@@ -229,11 +229,6 @@ async def login_user_route(user: User = Depends(current_verified_user)):
     return {"message": f"Hello local user  {user.email}!"}
 
 
-@app.on_event("startup")
-async def on_startup():
-    await create_db_and_tables()
-
-
 
 
 from passlib.context import CryptContext

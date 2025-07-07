@@ -14,6 +14,9 @@ from auth.db import DATABASE_URL, Base  # Ensure auth is a package
 
 from startapp.models import Animal
 
+from auth.models import User_Profile  # taaki Alembic is model ko load kar le
+
+
 config = context.config
 fileConfig(config.config_file_name)
 
