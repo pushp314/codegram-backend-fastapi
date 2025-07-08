@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from httpx_oauth.clients.github import GitHubOAuth2
 import httpx
 from auth.db import User, async_session_maker
