@@ -1,11 +1,9 @@
 from sqlalchemy import Column, Integer, String, Boolean, JSON, ForeignKey
 from auth.db import Base
 
-
-
-
 class User_Profile(Base):
     __tablename__ = "user_profile"
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     github_id = Column(Integer, unique=True, index=True)
     user_id = Column(String, ForeignKey("user.id"))

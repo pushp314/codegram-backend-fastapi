@@ -8,9 +8,16 @@ from sqlalchemy.future import select
 from passlib.context import CryptContext
 import jwt
 import datetime
+from auth.db import OAuthAccount
+import os
+from dotenv import load_dotenv
 
-SECRET = "SECRET"
-ALGORITHM = "HS256"
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+
+SECRET = os.getenv("SECRET")
+ALGORITHM = os.getenv("ALGORITHM")
+
 
 def create_access_token(user_id: str, email: str) -> str:
     expiration = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)
@@ -23,8 +30,20 @@ def create_access_token(user_id: str, email: str) -> str:
     token = jwt.encode(payload, SECRET, algorithm=ALGORITHM)
     return token
 
-GITHUB_CLIENT_ID = "Ov23liGyvkKJuwNoaHRs"
-GITHUB_CLIENT_SECRET = "b8547e77b269a8f381721a130445592517759722"
+def create_refresh_token(user_id: str, email: str) -> str:
+    expiration = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)  # longer expiry
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": int(expiration.timestamp()),
+        "type": "refresh"
+    }
+    return jwt.encode(payload, SECRET, algorithm=ALGORITHM)
+
+
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
 github_oauth_client = GitHubOAuth2(
     client_id=GITHUB_CLIENT_ID,
@@ -89,9 +108,20 @@ async def github_callback(request: Request):
     # --- DB Logic ---
     async with async_session_maker() as session:
         # 1. Upsert User
+
         result = await session.execute(select(User).where(User.email == github_email))
-        user = result.scalar_one_or_none()
-        if not user:
+        user = result.unique().scalar_one_or_none()
+
+        if user:
+              return JSONResponse({
+           "message": "User already exists",
+          "jwt_token": create_access_token(str(user.id), github_email),
+           "refresh_token": create_refresh_token(str(user.id), github_email)
+        }, status_code=200)
+
+          
+
+        else:
             user = User(
                 email=github_email,
                 username=github_username,
@@ -103,6 +133,16 @@ async def github_callback(request: Request):
             session.add(user)
             await session.commit()
             await session.refresh(user)
+
+            oauth_account = OAuthAccount(
+            oauth_name="github",
+            access_token=access_token,
+            account_id=str(user_data.get("id")),
+            account_email=github_email,
+            user_id=user.id
+                             )
+            session.add(oauth_account)
+            await session.commit()
 
         # 2. Upsert User_Profile
         result = await session.execute(select(User_Profile).where(User_Profile.github_id == user_data.get("id")))
@@ -160,6 +200,11 @@ async def github_callback(request: Request):
         await session.commit()
 
         jwt_token = create_access_token(str(user.id), github_email)
+        refresh_token = create_refresh_token(str(user.id), github_email)
+
+
+        
+
 
         return JSONResponse({
             "message": "login successful",
@@ -172,5 +217,6 @@ async def github_callback(request: Request):
                 "is_superuser": user.is_superuser
             },
             "jwt_token": jwt_token,
+            "refresh_token": refresh_token,
             "profile": user_data
         })
